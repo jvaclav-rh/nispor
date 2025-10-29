@@ -72,6 +72,8 @@ def _iface_info_to_obj(iface_info):
         iface = NisporMacsec(iface_info)
     elif iface_type == "hsr":
         iface = NisporHsr(iface_info)
+    elif iface_type == "iptunnel":
+        iface = NisporIpTunnel(iface_info)
     else:
         iface = NisporBaseIface(iface_info)
     if ctrl_type == "bond":
