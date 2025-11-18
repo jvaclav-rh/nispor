@@ -148,10 +148,6 @@ pub enum IpTunnelMode {
     Ipip6,
 }
 
-const IP6_FLOWINFO_TCLASS_MASK: u32 = 0x0FF00000;
-const IP6_FLOWINFO_TCLASS_SHIFT: u32 = 20;
-const IP6_FLOWINFO_FLOWLABEL_MASK: u32 = 0x000FFFFF;
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 #[non_exhaustive]
 pub struct IpTunnelInfo {
@@ -182,7 +178,7 @@ pub struct IpTunnelInfo {
     pub encap_limit: Option<u8>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub flow_label: Option<u32>,
+    pub flow_info: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encap_type: Option<TunnelEncapType>,
@@ -232,14 +228,7 @@ pub(crate) fn get_ip_tunnel_info(
                     ip_tunnel_info.tos = Some(d);
                 }
                 InfoIpTunnel::FlowInfo(d) => {
-                    let tos: u32 = (d & IP6_FLOWINFO_TCLASS_MASK)
-                        >> IP6_FLOWINFO_TCLASS_SHIFT;
-                    ip_tunnel_info.flow_label =
-                        Some(d & IP6_FLOWINFO_FLOWLABEL_MASK);
-
-                    if let Ok(val) = u8::try_from(tos) {
-                        ip_tunnel_info.tos = Some(val);
-                    }
+                    ip_tunnel_info.flow_info = Some(d);
                 }
                 InfoIpTunnel::Ipv6SitFlags(d) => {
                     ip_tunnel_info.flags = Some(IpTunnelFlags::Ipv6SitFlags(d));
