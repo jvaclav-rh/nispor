@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::{collections::HashMap, net::IpAddr};
+use std::{collections::HashMap, net::IpAddr, str::FromStr};
 
 use rtnetlink::packet_route::{
     link::{InfoData, InfoIpTunnel},
@@ -7,10 +7,11 @@ use rtnetlink::packet_route::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{Iface, IfaceType};
+use crate::{Iface, IfaceType, NisporError};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[non_exhaustive]
+#[serde(rename_all = "snake_case")]
 pub enum TunnelEncapFlags {
     CSum,
     CSum6,
@@ -50,6 +51,7 @@ impl From<rtnetlink::packet_route::link::TunnelEncapFlags>
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[non_exhaustive]
+#[serde(rename_all = "snake_case")]
 pub enum TunnelEncapType {
     None,
     Fou,
@@ -87,6 +89,7 @@ impl From<rtnetlink::packet_route::link::TunnelEncapType> for TunnelEncapType {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[non_exhaustive]
+#[serde(rename_all = "snake_case")]
 pub enum Ip6TunnelFlags {
     IgnEncapLimit,
     UseOrigTclass,
@@ -95,6 +98,9 @@ pub enum Ip6TunnelFlags {
     RcvDscpCopy,
     UseOrigFwMark,
     AllowLocalRemote,
+    CapXmit,
+    CapRcv,
+    CapPerPacket,
     Other(u32),
 }
 
@@ -122,17 +128,164 @@ impl From<rtnetlink::packet_route::link::Ip6TunnelFlags> for Ip6TunnelFlags {
             rtnetlink::packet_route::link::Ip6TunnelFlags::AllowLocalRemote => {
                 Self::AllowLocalRemote
             }
+            rtnetlink::packet_route::link::Ip6TunnelFlags::CapXmit => {
+                Self::CapXmit
+            }
+            rtnetlink::packet_route::link::Ip6TunnelFlags::CapRcv => {
+                Self::CapRcv
+            }
+            rtnetlink::packet_route::link::Ip6TunnelFlags::CapPerPacket => {
+                Self::CapPerPacket
+            }
             _ => Self::Other(d.bits()),
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(into = "String")]
+#[serde(try_from = "String")]
 #[non_exhaustive]
 pub enum IpTunnelFlags {
     Ipv4Flags(u16),
     Ipv6SitFlags(u16),
     Ipv6Flags(Vec<Ip6TunnelFlags>),
+}
+
+fn parse_flag_integer_u16(s: &str) -> Result<u16, NisporError> {
+    u16::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).map_err(|e| {
+        NisporError::invalid_argument(format!("Invalid flag integer: {}", e))
+    })
+}
+
+fn parse_flag_integer_u32(s: &str) -> Result<u32, NisporError> {
+    u32::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).map_err(|e| {
+        NisporError::invalid_argument(format!("Invalid flag integer: {}", e))
+    })
+}
+
+impl std::fmt::Display for Ip6TunnelFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IgnEncapLimit => write!(f, "ign_encap_limit"),
+            Self::UseOrigTclass => write!(f, "use_orig_tclass"),
+            Self::UseOrigFlowlabel => write!(f, "use_orig_flowlabel"),
+            Self::Mip6Dev => write!(f, "mip6_dev"),
+            Self::RcvDscpCopy => write!(f, "rcv_dscp_copy"),
+            Self::UseOrigFwMark => write!(f, "use_orig_fw_mark"),
+            Self::AllowLocalRemote => write!(f, "allow_local_remote"),
+            Self::CapXmit => write!(f, "cap_xmit"),
+            Self::CapRcv => write!(f, "cap_rcv"),
+            Self::CapPerPacket => write!(f, "cap_per_packet"),
+            Self::Other(val) => write!(f, "0x{:x}", val),
+        }
+    }
+}
+
+impl FromStr for Ip6TunnelFlags {
+    type Err = NisporError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ign_encap_limit" => Ok(Self::IgnEncapLimit),
+            "use_orig_tclass" => Ok(Self::UseOrigTclass),
+            "use_orig_flowlabel" => Ok(Self::UseOrigFlowlabel),
+            "mip6_dev" => Ok(Self::Mip6Dev),
+            "rcv_dscp_copy" => Ok(Self::RcvDscpCopy),
+            "use_orig_fw_mark" => Ok(Self::UseOrigFwMark),
+            "allow_local_remote" => Ok(Self::AllowLocalRemote),
+            "cap_xmit" => Ok(Self::CapXmit),
+            "cap_rcv" => Ok(Self::CapRcv),
+            "cap_per_packet" => Ok(Self::CapPerPacket),
+            _ => Ok(Self::Other(parse_flag_integer_u32(s)?)),
+        }
+    }
+}
+
+impl std::fmt::Display for IpTunnelFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ipv4Flags(flags) => {
+                write!(f, "ipv4:0x{:x}", flags)
+            }
+            Self::Ipv6SitFlags(flags) => {
+                write!(f, "ipv6_sit:0x{:x}", flags)
+            }
+            Self::Ipv6Flags(flags) => {
+                write!(
+                    f,
+                    "ipv6:{}",
+                    flags
+                        .iter()
+                        .map(|flag| flag.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                )
+            }
+        }
+    }
+}
+
+impl TryFrom<String> for IpTunnelFlags {
+    type Error = NisporError;
+
+    fn try_from(v: String) -> Result<Self, Self::Error> {
+        let [flag_type, flags] = v
+            .split(":")
+            .collect::<Vec<&str>>()
+            .try_into()
+            .or_else(|_| {
+                Err(NisporError::invalid_argument(format!(
+                    "Invalid IpTunnelFlags: {}",
+                    v
+                )))
+            })?;
+
+        match flag_type {
+            "ipv4" => {
+                Ok(IpTunnelFlags::Ipv4Flags(parse_flag_integer_u16(flags)?))
+            }
+            "ipv6_sit" => {
+                Ok(IpTunnelFlags::Ipv6SitFlags(parse_flag_integer_u16(flags)?))
+            }
+            "ipv6" => Ok(IpTunnelFlags::Ipv6Flags(
+                flags
+                    .split(',')
+                    .map(|flag| {
+                        Ip6TunnelFlags::from_str(flag).map_err(|_| {
+                            NisporError::invalid_argument(format!(
+                                "Invalid Ip6TunnelFlags: {}",
+                                flag
+                            ))
+                        })
+                    })
+                    .collect::<Result<Vec<Ip6TunnelFlags>, NisporError>>()?,
+            )),
+            _ => Err(NisporError::invalid_argument(format!(
+                "Invalid IpTunnelFlags type: {}",
+                flag_type
+            ))),
+        }
+    }
+}
+
+impl From<IpTunnelFlags> for String {
+    fn from(flags: IpTunnelFlags) -> Self {
+        match flags {
+            IpTunnelFlags::Ipv4Flags(flags) => format!("ipv4:0x{:x}", flags),
+            IpTunnelFlags::Ipv6SitFlags(flags) => {
+                format!("ipv6_sit:0x{:x}", flags)
+            }
+            IpTunnelFlags::Ipv6Flags(flags) => format!(
+                "ipv6:{}",
+                flags
+                    .iter()
+                    .map(|flag| flag.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
@@ -199,7 +352,7 @@ pub struct IpTunnelInfo {
     pub fwmark: Option<u32>,
 
     #[serde(skip_serializing)]
-    _parent_ifindex: u32,
+    _parent_ifindex: Option<u32>,
 }
 
 pub(crate) fn get_ip_tunnel_info(
@@ -219,7 +372,7 @@ pub(crate) fn get_ip_tunnel_info(
                     ip_tunnel_info.remote = Some(d);
                 }
                 InfoIpTunnel::Link(d) => {
-                    ip_tunnel_info._parent_ifindex = d;
+                    ip_tunnel_info._parent_ifindex = Some(d);
                 }
                 InfoIpTunnel::Ttl(d) => {
                     ip_tunnel_info.ttl = Some(d);
@@ -302,7 +455,7 @@ fn fill_port_iface_names(iface_states: &mut HashMap<String, Iface>) {
     for iface in iface_states.values_mut() {
         if let Some(tun) = iface.ip_tunnel.as_mut() {
             if let Some(parent_iface_name) =
-                index_to_name.get(&tun._parent_ifindex)
+                index_to_name.get(&tun._parent_ifindex.unwrap_or_default())
             {
                 tun.parent = Some(parent_iface_name.to_string());
             }

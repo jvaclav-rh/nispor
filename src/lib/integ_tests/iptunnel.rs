@@ -39,7 +39,8 @@ ip_tunnel:
   local: 2001:db8:e::1
   remote: 2001:db8:e::ffff
   mode: ip6ip6
-  ttl: 42"#;
+  ttl: 42
+  flags: ipv6:cap_xmit,cap_rcv"#;
 
 const EXPECTED_IPIP6_INFO: &str = r#"---
 name: ipip60
