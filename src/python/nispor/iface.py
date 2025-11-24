@@ -8,6 +8,7 @@ from .bridge import NisporBridgePort
 from .hsr import NisporHsr
 from .ipoib import NisporIpoib
 from .ipvlan import NisporIpVlan
+from .iptunnel import NisporIpTunnel
 from .mac_vlan import NisporMacVlan
 from .mac_vtap import NisporMacVtap
 from .macsec import NisporMacsec
