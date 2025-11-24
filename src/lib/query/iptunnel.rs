@@ -247,14 +247,7 @@ impl TryFrom<String> for IpTunnelFlags {
             "ipv6" => Ok(IpTunnelFlags::Ipv6Flags(
                 flags
                     .split(',')
-                    .map(|flag| {
-                        Ip6TunnelFlags::from_str(flag).map_err(|_| {
-                            NisporError::invalid_argument(format!(
-                                "Invalid Ip6TunnelFlags: {}",
-                                flag
-                            ))
-                        })
-                    })
+                    .map(Ip6TunnelFlags::from_str)
                     .collect::<Result<Vec<Ip6TunnelFlags>, NisporError>>()?,
             )),
             _ => Err(NisporError::invalid_argument(format!(
