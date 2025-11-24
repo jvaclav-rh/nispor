@@ -53,7 +53,7 @@ ip_tunnel:
 
 #[test]
 fn test_get_ipip_iface_yaml() {
-    with_ipip_iface(|| {
+    with_iptunnel_iface("ipip", || {
         let state = NetState::retrieve().unwrap();
         let iface = &state.ifaces[IFACE_NAME_IPIP];
 
@@ -65,7 +65,7 @@ fn test_get_ipip_iface_yaml() {
 
 #[test]
 fn test_get_sit_iface_yaml() {
-    with_sit_iface(|| {
+    with_iptunnel_iface("sit", || {
         let state = NetState::retrieve().unwrap();
         let iface = &state.ifaces[IFACE_NAME_SIT];
 
@@ -76,7 +76,7 @@ fn test_get_sit_iface_yaml() {
 
 #[test]
 fn test_get_ip6ip6_iface_yaml() {
-    with_ip6ip6_iface(|| {
+    with_iptunnel_iface("ip6ip6", || {
         let state = NetState::retrieve().unwrap();
         let iface = &state.ifaces[IFACE_NAME_IP6IP6];
 
@@ -87,7 +87,7 @@ fn test_get_ip6ip6_iface_yaml() {
 
 #[test]
 fn test_get_ipip6_iface_yaml() {
-    with_ipip6_iface(|| {
+    with_iptunnel_iface("ipip6", || {
         let state = NetState::retrieve().unwrap();
         let iface = &state.ifaces[IFACE_NAME_IPIP6];
 
@@ -96,53 +96,11 @@ fn test_get_ipip6_iface_yaml() {
     });
 }
 
-fn with_ipip_iface<T>(test: T)
+fn with_iptunnel_iface<T>(iface_type: &str, test: T)
 where
     T: FnOnce() + panic::UnwindSafe,
 {
-    super::utils::set_network_environment("ipip");
-
-    let result = panic::catch_unwind(|| {
-        test();
-    });
-
-    super::utils::clear_network_environment();
-    assert!(result.is_ok())
-}
-
-fn with_sit_iface<T>(test: T)
-where
-    T: FnOnce() + panic::UnwindSafe,
-{
-    super::utils::set_network_environment("sit");
-
-    let result = panic::catch_unwind(|| {
-        test();
-    });
-
-    super::utils::clear_network_environment();
-    assert!(result.is_ok())
-}
-
-fn with_ip6ip6_iface<T>(test: T)
-where
-    T: FnOnce() + panic::UnwindSafe,
-{
-    super::utils::set_network_environment("ip6ip6");
-
-    let result = panic::catch_unwind(|| {
-        test();
-    });
-
-    super::utils::clear_network_environment();
-    assert!(result.is_ok())
-}
-
-fn with_ipip6_iface<T>(test: T)
-where
-    T: FnOnce() + panic::UnwindSafe,
-{
-    super::utils::set_network_environment("ipip6");
+    super::utils::set_network_environment(iface_type);
 
     let result = panic::catch_unwind(|| {
         test();
