@@ -234,11 +234,11 @@ impl TryFrom<String> for IpTunnelFlags {
             .split(":")
             .collect::<Vec<&str>>()
             .try_into()
-            .or_else(|_| {
-                Err(NisporError::invalid_argument(format!(
+            .map_err(|_| {
+                NisporError::invalid_argument(format!(
                     "Invalid IpTunnelFlags: {}",
                     v
-                )))
+                ))
             })?;
 
         match flag_type {

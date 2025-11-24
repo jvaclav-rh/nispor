@@ -279,11 +279,11 @@ elif [ "CHK$1" == "CHKipvlan" ];then
     sleep $LINK_WAIT_TIME
 elif [ "CHK$1" == "CHKipip" ];then
     create_nics
-    sudo ip tunnel add ipip0 mode ipip local 192.0.2.1 remote 192.0.2.2 ttl 42 tos 16
+    sudo ip tunnel add ipip0 mode ipip local 192.0.2.1 remote 192.0.2.2 ttl 42 tos 0x16
     sleep $LINK_WAIT_TIME
 elif [ "CHK$1" == "CHKsit" ];then
     create_nics
-    sudo ip tunnel add sittest0 mode sit local 192.0.2.1 remote 192.0.2.2 ttl 42 tos 16
+    sudo ip tunnel add sittest0 mode sit local 192.0.2.1 remote 192.0.2.2 ttl 42 tos 0x16
     sleep $LINK_WAIT_TIME
 elif [ "CHK$1" == "CHKip6ip6" ];then
     create_nics
