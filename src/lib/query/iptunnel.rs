@@ -271,20 +271,7 @@ impl TryFrom<String> for IpTunnelFlags {
 
 impl From<IpTunnelFlags> for String {
     fn from(flags: IpTunnelFlags) -> Self {
-        match flags {
-            IpTunnelFlags::Ipv4Flags(flags) => format!("ipv4:0x{:x}", flags),
-            IpTunnelFlags::Ipv6SitFlags(flags) => {
-                format!("ipv6_sit:0x{:x}", flags)
-            }
-            IpTunnelFlags::Ipv6Flags(flags) => format!(
-                "ipv6:{}",
-                flags
-                    .iter()
-                    .map(|flag| flag.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",")
-            ),
-        }
+        flags.to_string()
     }
 }
 
