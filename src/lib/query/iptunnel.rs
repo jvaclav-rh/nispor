@@ -230,16 +230,12 @@ impl TryFrom<String> for IpTunnelFlags {
     type Error = NisporError;
 
     fn try_from(v: String) -> Result<Self, Self::Error> {
-        let [flag_type, flags] = v
-            .split(":")
-            .collect::<Vec<&str>>()
-            .try_into()
-            .map_err(|_| {
-                NisporError::invalid_argument(format!(
-                    "Invalid IpTunnelFlags: {}",
-                    v
-                ))
-            })?;
+        let (flag_type, flags) = v.split_once(":").ok_or_else(|| {
+            NisporError::invalid_argument(format!(
+                "Invalid IpTunnelFlags: {}",
+                v
+            ))
+        })?;
 
         match flag_type {
             "ipv4" => {
